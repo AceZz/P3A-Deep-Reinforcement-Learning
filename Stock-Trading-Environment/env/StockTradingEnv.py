@@ -104,9 +104,11 @@ class StockTradingEnv(gym.Env):
         if self.current_step > len(self.df.loc[:, 'Open'].values) - 6:
             self.current_step = 0
 
-        delay_modifier = (self.current_step / MAX_STEPS)
+#         delay_modifier = (self.current_step / MAX_STEPS)
 
-        reward = self.balance * delay_modifier
+#         reward = self.balance * delay_modifier
+        reward = self.balance
+        
         done = self.net_worth <= 0
 
         obs = self._next_observation()
