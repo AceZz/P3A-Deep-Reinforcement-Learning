@@ -87,6 +87,7 @@ class StockTradingEnv(gym.Env):
             self.total_shares_sold += shares_sold
             self.total_sales_value += shares_sold * current_price
 
+        self.gain_net_worth = self.balance + self.shares_held * current_price  - self.net_worth
         self.net_worth = self.balance + self.shares_held * current_price
 
         if self.net_worth > self.max_net_worth:
@@ -107,7 +108,8 @@ class StockTradingEnv(gym.Env):
 #         delay_modifier = (self.current_step / MAX_STEPS)
 
 #         reward = self.balance * delay_modifier
-        reward = self.balance
+#         reward = self.balance
+        reward = self.gain_net_worth
         
         done = self.net_worth <= 0
 
@@ -120,6 +122,7 @@ class StockTradingEnv(gym.Env):
         self.balance = INITIAL_ACCOUNT_BALANCE
         self.net_worth = INITIAL_ACCOUNT_BALANCE
         self.max_net_worth = INITIAL_ACCOUNT_BALANCE
+        self.gain_net_worth = 0
         self.shares_held = 0
         self.cost_basis = 0
         self.total_shares_sold = 0
