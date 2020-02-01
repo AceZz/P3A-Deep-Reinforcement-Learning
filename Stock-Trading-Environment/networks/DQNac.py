@@ -23,13 +23,10 @@ class MyModel(tf.keras.Model):
             )
         #,kernel_initializer = tf.keras.initializers.TruncatedNormal([M,L,N,32], stddev=0.15)
         
-        self.norm=tf.keras.layers.BatchNormalization(
-            
-            )
+        self.norm=tf.keras.layers.BatchNormalization()
         
         self.conv2 = tf.keras.layers.Conv2D(
             filters = 1, kernel_size = (1,2), strides = strides, padding = "valid" 
-            
             )      
          #kernel_initializer = tf.keras.initializers.TruncatedNormal([1,1,32,1], stddev=0.15)
             
