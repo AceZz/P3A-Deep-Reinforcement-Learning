@@ -83,6 +83,7 @@ class StockCritic:
         self.tau = 10e-3
         self.learning_rate = 10e-2
         self.gamma = 0.99
+        
         self.model = MyModel(32, (1,4), (1,1))
         self.dense1 = tf.keras.layers.Dense(
             10, activation='tanh', kernel_initializer='RandomNormal')
@@ -99,7 +100,6 @@ class StockCritic:
             z = tf.squeeze(z)
             a = [z[0], z[1], action[0][0]]
             z = tf.convert_to_tensor(a)
-            #z = tf.concat((z,action),axis=0)
             z = tf.expand_dims(z, 0)
             z = self.dense1(z)
             z = self.dense2(z)
