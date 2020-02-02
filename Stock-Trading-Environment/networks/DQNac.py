@@ -50,28 +50,33 @@ class StockActor:
         self.tau = 10e-3
         self.learning_rate = 10e-2
         self.gamma = 0.99
-        self.model = MyModel(32, (1,4), (1,1))
-
         
+        
+        self.model = MyModel(32, (1,4), (1,1))        
+        self.dense = tf.keras.layers.Dense(
+                1, activation='tanh', kernel_initializer='RandomNormal')
+        
+    
+    @tf.function
     def build_actor(self,inputs):
             z = inputs
             z = self.model(z)
             z = tf.squeeze(z)
             z = tf.expand_dims(z, 0)
-            z = tf.keras.layers.Dense(
-                1, activation='tanh', kernel_initializer='RandomNormal')(z)
+            z = self.dense(z)
 
             return z
         
         
     def predict(self, inputs):
         
-        return self.build_actor(inputs.astype('float32'))     
+        return self.build_actor(inputs.astype('float32'))  
+    
         
 class StockCritic:
     #Initial hyperparaters
     
-    def __init__(self,action): 
+    def __init__(self): 
         
         #super(StockActor, self).__init__()
         
@@ -79,31 +84,34 @@ class StockCritic:
         self.learning_rate = 10e-2
         self.gamma = 0.99
         self.model = MyModel(32, (1,4), (1,1))
-        self.action=action
-
-        
-    def build_critic(self,inputs):
+        self.dense1 = tf.keras.layers.Dense(
+            10, activation='tanh', kernel_initializer='RandomNormal')
+        self.dense2 = tf.keras.layers.Dense(
+            10, activation='tanh', kernel_initializer='RandomNormal')        
+        self.dense3 = tf.keras.layers.Dense(
+            1, activation='tanh', kernel_initializer='RandomNormal')
+    
+    
+    @tf.function    
+    def build_critic(self,inputs,action):
             z = inputs
             z = self.model(z)
             z = tf.squeeze(z)
-            z = np.append(z,self.action)
+            a = [z[0], z[1], action[0][0]]
+            z = tf.convert_to_tensor(a)
+            #z = tf.concat((z,action),axis=0)
             z = tf.expand_dims(z, 0)
-            z = tf.keras.layers.Dense(
-                10, activation='tanh', kernel_initializer='RandomNormal')(z)
-            z = tf.keras.layers.Dense(
-                10, activation='tanh', kernel_initializer='RandomNormal')(z)
-            z = tf.keras.layers.Dense(
-                1, activation='tanh', kernel_initializer='RandomNormal')(z)            
+            z = self.dense1(z)
+            z = self.dense2(z)
+            z = self.dense3(z)            
 
             return z       
         
         
-    def predict(self, inputs):
+    def predict(self, inputs,action):
         
-        return self.build_critic(inputs.astype('float32'))        
-        
-        
-        
+        return self.build_critic(inputs.astype('float32'),action)      
+
         
         
         
