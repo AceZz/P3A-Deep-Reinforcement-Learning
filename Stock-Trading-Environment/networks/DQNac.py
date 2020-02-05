@@ -59,9 +59,7 @@ class StockActor(tf.keras.Model):
     
     
     def call(self,inputs):
-         
-        #self.model.add(self.dense1)
-        #self.model.add(self.dense2)    
+            
         z = inputs
         z = self.model(z)
         z = tf.squeeze(z)
@@ -112,11 +110,40 @@ class StockCritic(tf.keras.Model):
 
         return z       
 
-def DDPG():
+class DQN():
     
-    
-            
+    def __init__(self, gamma, max_experiences, min_experiences, batch_size, lr):
         
+        
+        #initialize the buffer
+        
+        self.experience = {'s': [], 'a': [], 'r': [], 's2': [], 'done': []}
+        
+        self.max_experiences = max_experiences
+        self.min_experiences = min_experiences        
+                
+        
+        
+        self.batch_size = batch_size
+        self.optimizer = tf.optimizers.Adam(lr)
+        self.gamma = gamma
+
+        #initialize nets
+        self.act = StockActor()
+        self.act_tar = StockActor()
+        self.act_tar.set_weights(self.act.get_weights()) 
+    
+        self.crit = StockCritic()
+        self.crit_tar = StockCritic()        
+        self.crit_tar.set_weights(self.crit.get_weights())
+    
+    
+    def add_experience(self, exp):
+        if len(self.experience['s']) >= self.max_experiences:
+            for key in self.experience.keys():
+                self.experience[key].pop(0)
+        for key, value in exp.items():
+            self.experience[key].append(value)    
         
         
         
