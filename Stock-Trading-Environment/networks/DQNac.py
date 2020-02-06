@@ -147,20 +147,90 @@ class DQN():
                 self.experience[key].pop(0)
         for key, value in exp.items():
             self.experience[key].append(value)    
-           
-    def updateQ(self,actual_values,selected_action_values):
+     
+    def convert_action(self,action):
+    
+        if action > 10e-3:
+            return np.array([0, action]) #buy stocks with action% of remaining balance
+        elif action < -10e-3:
+            return np.array([1, -action]) #sell action% of stocks
+        else:
+            return np.array([2, 0]) #do nothing
+    
+    
+    def train(self,env,T): 
         
-        with tf.GradientTape() as tape:
-            loss = tf.math.reduce_sum(tf.square(actual_values - selected_action_values))
-        variables = self.crit.trainable_variables
-        gradients = tape.gradient(loss, variables)
-        print(variables)
-        print(gradients)
-        self.optimizer.apply_gradients(zip(gradients, variables))
+        observations = env.reset()
+        observations = np.expand_dims(observations,axis=0)
+        observations = np.expand_dims(observations,axis=0)
         
-        
-        
-        
+        for t in range(T):
+            action = self.act(observations) # observations is actually a single "state" ie past 5 days
+            action = tf.squeeze(action)
+            action = self.convert_action(action)
+            #print(action)
+            prev_observations = observations
+            observations, reward, done, _ = env.step(action)
+            observations = np.expand_dims(observations,axis=0)
+            observations = np.expand_dims(observations,axis=0)
+            exp = {'s': prev_observations, 'a': action, 'r': reward, 's2': observations, 'done': done}
+            self.add_experience(exp)
+            
+            
+            ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
+            states = np.asarray([self.experience['s'][i] for i in ids])
+            actions = np.asarray([self.experience['a'][i] for i in ids])
+            rewards = np.asarray([self.experience['r'][i] for i in ids])
+            states_next = np.asarray([self.experience['s2'][i] for i in ids])
+            dones = np.asarray([self.experience['done'][i] for i in ids])
+            
+            Y = np.zeros(self.batch_size)
+            Qval = np.zeros(self.batch_size)
+            #print(Y)
+            
+            for j in range(self.batch_size):
+                
+                #calcul de crit_target(s_next,action_target(s_next))
+                actj = self.act_tar(states_next[j])
+                self.crit_tar.action = tf.squeeze(actj)
+                value_next = self.crit_tar(states_next[j])
+                
+                rj = tf.squeeze(rewards[j])
+                rj = tf.dtypes.cast(rj,tf.float32)
+                next_val = tf.squeeze(value_next)
+                Y[j] = rj+ self.gamma* next_val                
+                
+                #calcul de crit(s,a)
+                #conversion from action[ , ] to action
+                act = actions[j]
+                if act[0]==2:
+                    act_eff=tf.constant(0,dtype=tf.float32)
+                elif act[0]==1:
+                    act_eff=tf.constant(-act[1],dtype=tf.float32)
+                else:
+                    act_eff=tf.constant(act[1],dtype=tf.float32)
+                
+                
+                self.crit.action = tf.squeeze(act_eff)
+                Qval[j] = tf.squeeze(self.crit(states_next[j]))
+                 
+                
+  
+            
+            
+            Y = tf.constant(Y, dtype=tf.float32)
+            Qval = tf.constant(Qval, dtype=tf.float32)
+            
+            #update Q
+            with tf.GradientTape() as tape:
+                loss = tf.math.reduce_sum(tf.square(Y - Qval))
+            variables = self.crit.trainable_variables
+            gradients = tape.gradient(loss, variables)
+            print(loss)
+            print(gradients)
+            self.optimizer.apply_gradients(zip(gradients, variables))
+            print("Done optimize")
+
         
         
         
