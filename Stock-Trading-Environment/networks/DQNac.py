@@ -41,6 +41,7 @@ class MyModel(tf.keras.Model):
         return z
     
 class StockActor(tf.keras.Model):
+    tf.keras.backend.set_floatx('float32')
     #Initial hyperparaters
     
     def __init__(self): 
@@ -53,9 +54,9 @@ class StockActor(tf.keras.Model):
         
         self.model = MyModel(32, (1,5), (1,1))       
         self.dense1 = tf.keras.layers.Dense(
-                1, activation='tanh', kernel_initializer='RandomNormal')
-        #self.dense2 = tf.keras.layers.Dense(
-         #       1, activation='tanh', kernel_initializer='RandomNormal')        
+                10, activation='softsign', kernel_initializer='GlorotNormal')
+        self.dense2 = tf.keras.layers.Dense(
+                1, activation='softsign', kernel_initializer='GlorotNormal')        
     
     
     def call(self,inputs):
@@ -66,11 +67,13 @@ class StockActor(tf.keras.Model):
         z = tf.expand_dims(z, 0)
         z = tf.expand_dims(z, 0)
         z = self.dense1(z)
+        z = self.dense2(z)
 
         return z  
     
         
 class StockCritic(tf.keras.Model):
+    tf.keras.backend.set_floatx('float32')
     #Initial hyperparaters
     
     def __init__(self): 
@@ -86,18 +89,18 @@ class StockCritic(tf.keras.Model):
         self.model = MyModel(32, (1,4), (1,1))
        
         self.dense1 = tf.keras.layers.Dense(
-            10, activation='tanh', kernel_initializer='RandomNormal')
+            10, activation='tanh', kernel_initializer='GlorotNormal')
         self.dense2 = tf.keras.layers.Dense(
-            10, activation='tanh', kernel_initializer='RandomNormal')        
+            10, activation='tanh', kernel_initializer='GlorotNormal')        
         self.dense3 = tf.keras.layers.Dense(
-            1, activation='tanh', kernel_initializer='RandomNormal')
+            1, activation='tanh', kernel_initializer='GlorotNormal')
         
         self.optimizer = tf.optimizers.Adam(self.learning_rate)
 
     
         
     def call(self,inputs):
-        print(1)
+        #print(1)
         z = inputs
         z = self.model(z)
         z = tf.squeeze(z)
