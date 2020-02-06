@@ -140,13 +140,26 @@ class DQN():
         self.crit_tar = StockCritic()        
         self.crit_tar.set_weights(self.crit.get_weights())
     
-    
+
     def add_experience(self, exp):
         if len(self.experience['s']) >= self.max_experiences:
             for key in self.experience.keys():
                 self.experience[key].pop(0)
         for key, value in exp.items():
             self.experience[key].append(value)    
+           
+    def updateQ(self,actual_values,selected_action_values):
+        
+        with tf.GradientTape() as tape:
+            loss = tf.math.reduce_sum(tf.square(actual_values - selected_action_values))
+        variables = self.crit.trainable_variables
+        gradients = tape.gradient(loss, variables)
+        print(variables)
+        print(gradients)
+        self.optimizer.apply_gradients(zip(gradients, variables))
+        
+        
+        
         
         
         
