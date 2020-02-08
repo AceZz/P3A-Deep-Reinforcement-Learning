@@ -23,6 +23,7 @@ class StockTradingEnv(gym.Env):
 
         self.df = df
         self.reward_range = (0, MAX_ACCOUNT_BALANCE)
+        self.initial_account_balance = INITIAL_ACCOUNT_BALANCE # to communicate it outside this file
 
         # Actions of the format Buy x%, Sell x%, Hold, etc.
         self.action_space = spaces.Box(
@@ -131,6 +132,22 @@ class StockTradingEnv(gym.Env):
         # Set the current step to a random point within the data frame
         self.current_step = random.randint(
             0, len(self.df.loc[:, 'Open'].values) - 6)
+
+        return self._next_observation()
+    
+    def reset_to_day_one(self):
+        # Reset the state of the environment to an initial state
+        self.balance = INITIAL_ACCOUNT_BALANCE
+        self.net_worth = INITIAL_ACCOUNT_BALANCE
+        self.max_net_worth = INITIAL_ACCOUNT_BALANCE
+        self.gain_net_worth = 0
+        self.shares_held = 0
+        self.cost_basis = 0
+        self.total_shares_sold = 0
+        self.total_sales_value = 0
+
+        # Set the current step to a random point within the data frame
+        self.current_step = 0
 
         return self._next_observation()
 
