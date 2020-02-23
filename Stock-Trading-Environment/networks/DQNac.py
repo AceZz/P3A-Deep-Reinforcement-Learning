@@ -83,7 +83,7 @@ class StockCritic(tf.keras.Model):
         self.tau = 10e-3
         self.learning_rate = 10e-4
         self.gamma = 0.99
-        self.action= tf.constant(0.)
+        #self.action= tf.constant(0.)
 
         
         self.model = MyModel(32, (1,4), (1,1))
@@ -99,12 +99,12 @@ class StockCritic(tf.keras.Model):
 
     
         
-    def call(self,inputs):
+    def call(self,inputs):                               #inputs=[state,action]
         #print(1)
-        z = inputs
+        z = inputs[0]
         z = self.model(z)
         z = tf.squeeze(z)
-        a = [z[0], z[1], self.action]
+        a = [z[0], z[1], inputs[1]]
         z = tf.convert_to_tensor(a)
         z = tf.expand_dims(z, 0)
         z = self.dense1(z)
@@ -158,6 +158,14 @@ class DQN():
             return np.array([2, 0]) #do nothing
     
     
+    def convert_action_back(self,action):
+        if action[0]==2:
+            return tf.squeeze(tf.constant(0,dtype=tf.float32))
+        elif action[0]==1:
+            return tf.squeeze(tf.constant(-action[1],dtype=tf.float32))
+        else:
+            return tf.squeeze(tf.constant(action[1],dtype=tf.float32))
+    
     def train(self,env,T): 
         
         observations = env.reset()
@@ -172,52 +180,37 @@ class DQN():
             prev_observations = observations
             observations, reward, done, _ = env.step(action)
             observations = np.expand_dims(observations,axis=0)
-            observations = np.expand_dims(observations,axis=0)
+            #observations = np.expand_dims(observations,axis=0)
             exp = {'s': prev_observations, 'a': action, 'r': reward, 's2': observations, 'done': done}
             self.add_experience(exp)
             
             
             ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
             states = np.asarray([self.experience['s'][i] for i in ids])
-            actions = np.asarray([self.experience['a'][i] for i in ids])
-            rewards = np.asarray([self.experience['r'][i] for i in ids])
+            actions = np.asarray([self.convert_action_back(self.experience['a'][i]) for i in ids])
+            rewards = np.asarray([tf.dtypes.cast(self.experience['r'][i],tf.float32) for i in ids])
             states_next = np.asarray([self.experience['s2'][i] for i in ids])
             dones = np.asarray([self.experience['done'][i] for i in ids])
             
-            Y = np.zeros(self.batch_size)
-            Qval = np.zeros(self.batch_size)
-            #print(Y)
-            
-            for j in range(self.batch_size):
-                
-                #calcul de crit_target(s_next,action_target(s_next))
-                actj = self.act_tar(states_next[j])
-                self.crit_tar.action = tf.squeeze(actj)
-                value_next = self.crit_tar(states_next[j])
-                
-                rj = tf.squeeze(rewards[j])
-                rj = tf.dtypes.cast(rj,tf.float32)
-                next_val = tf.squeeze(value_next)
-                Y[j] = rj+ self.gamma* next_val                
-                
-                #calcul de crit(s,a)
-                #conversion from action[ , ] to action
-                act = actions[j]
-                if act[0]==2:
-                    act_eff=tf.constant(0,dtype=tf.float32)
-                elif act[0]==1:
-                    act_eff=tf.constant(-act[1],dtype=tf.float32)
-                else:
-                    act_eff=tf.constant(act[1],dtype=tf.float32)
-                
-                
-                self.crit.action = tf.squeeze(act_eff)
-                Qval[j] = tf.squeeze(self.crit(states_next[j]))
-                 
-                
-  
+            #calcul de crit_target(s_next,action_target(s_next))
+            action_tar = self.act_tar(states_next)
+            print(action_tar)
+            action_tar = tf.squeeze(action_tar)
+            print(action_tar)
+            value_next = self.crit_tar([states_next,action_tar])
+            print(value_next)
+            value_next = tf.squeeze(value_next)
+            print(value_next)
             
             
+            Y = rewards + self.gamma* value_next
+            
+            
+            #calcul de crit(s,a)
+
+            Qval = tf.squeeze(self.crit([states_next,actions]))
+            
+             
             Y = tf.constant(Y, dtype=tf.float32)
             Qval = tf.constant(Qval, dtype=tf.float32)
             
