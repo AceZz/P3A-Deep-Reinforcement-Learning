@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 model_checkpoint_path: "DQN_10500"
 all_model_checkpoint_paths: "DQN_10500"
@@ -5,3 +6,7 @@ all_model_checkpoint_paths: "DQN_10500"
 model_checkpoint_path: "DQN_1200"
 all_model_checkpoint_paths: "DQN_1200"
 >>>>>>> Stashed changes
+=======
+model_checkpoint_path: "DQN_4400"
+all_model_checkpoint_paths: "DQN_4400"
+>>>>>>> master
