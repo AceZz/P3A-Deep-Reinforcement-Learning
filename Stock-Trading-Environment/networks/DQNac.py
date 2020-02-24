@@ -52,7 +52,7 @@ class StockActor(tf.keras.Model):
         self.learning_rate = 10e-2
         self.gamma = 0.99
         
-        self.model = MyModel(32, (1,5), (1,1))       
+        self.model = MyModel(32, (1,4), (1,1))       
         self.dense1 = tf.keras.layers.Dense(
                 10, activation='softsign', kernel_initializer='GlorotNormal')
         self.dense2 = tf.keras.layers.Dense(
@@ -64,7 +64,7 @@ class StockActor(tf.keras.Model):
         z = inputs
         z = self.model(z)
         z = tf.squeeze(z)
-        z = tf.expand_dims(z, 0)
+        #z = tf.expand_dims(z, 0)
         z = tf.expand_dims(z, 0)
         z = self.dense1(z)
         z = self.dense2(z)
@@ -130,7 +130,8 @@ class DQN():
         self.batch_size = batch_size
         self.optimizer = tf.optimizers.Adam(lr)
         self.gamma = gamma
-
+        
+        
         #initialize nets
         self.act = StockActor()
         self.act_tar = StockActor()
@@ -193,11 +194,15 @@ class DQN():
             dones = np.asarray([self.experience['done'][i] for i in ids])
             
             #calcul de crit_target(s_next,action_target(s_next))
+
             action_tar = self.act_tar(states_next)
-            print(action_tar)
             action_tar = tf.squeeze(action_tar)
-            print(action_tar)
-            value_next = self.crit_tar([states_next,action_tar])
+            
+            #creation of a batch of input state_action
+            states_act = np.asarray([[states_next[i],action_tar[i]] for i in range( self.batch_size)])
+            print(states_act)
+            
+            value_next = self.crit_tar(states_act)
             print(value_next)
             value_next = tf.squeeze(value_next)
             print(value_next)
