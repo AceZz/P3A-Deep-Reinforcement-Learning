@@ -199,7 +199,7 @@ class DQN():
             action_tar = tf.squeeze(action_tar)
             
             #creation of a batch of input state_action
-            states_act = np.asarray([[states_next[i],action_tar[i]] for i in range( self.batch_size)])
+            states_act = [tf.convert_to_tensor(states_next),action_tar] 
             print(states_act)
             
             value_next = self.crit_tar(states_act)
