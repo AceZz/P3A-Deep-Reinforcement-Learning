@@ -18,7 +18,7 @@ class StockTradingEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df):
+    def __init__(self, df, in_log=False):
         super(StockTradingEnv, self).__init__()
 
         self.df = df
@@ -32,31 +32,62 @@ class StockTradingEnv(gym.Env):
         # Prices contains the OHCL values for the last five prices
         self.observation_space = spaces.Box(
             low=0, high=1, shape=(6, 6), dtype=np.float16)
+        
+        # Prices to be put in log and not normalized
+        self.in_log = in_log
 
     def _next_observation(self):
-        # Get the stock data points for the last 5 days and scale to between 0-1
-        frame = np.array([
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Open'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'High'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Low'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Close'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Volume'].values / MAX_NUM_SHARES,
-        ])
+        if not self.in_log:
+            # Get the stock data points for the last 5 days and scale to between 0-1
+            frame = np.array([
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Open'].values / MAX_SHARE_PRICE,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'High'].values / MAX_SHARE_PRICE,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Low'].values / MAX_SHARE_PRICE,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Close'].values / MAX_SHARE_PRICE,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Volume'].values / MAX_NUM_SHARES,
+            ])
 
-        # Append additional data and scale each value to between 0-1
-        obs = np.append(frame, [[
-            self.balance / MAX_ACCOUNT_BALANCE,
-            self.max_net_worth / MAX_ACCOUNT_BALANCE,
-            self.shares_held / MAX_NUM_SHARES,
-            self.cost_basis / MAX_SHARE_PRICE,
-            self.total_shares_sold / MAX_NUM_SHARES,
-            self.total_sales_value / (MAX_NUM_SHARES * MAX_SHARE_PRICE),
-        ]], axis=0)
+            # Append additional data and scale each value to between 0-1
+            obs = np.append(frame, [[
+                self.balance / MAX_ACCOUNT_BALANCE,
+                self.max_net_worth / MAX_ACCOUNT_BALANCE,
+                self.shares_held / MAX_NUM_SHARES,
+                self.cost_basis / MAX_SHARE_PRICE,
+                self.total_shares_sold / MAX_NUM_SHARES,
+                self.total_sales_value / (MAX_NUM_SHARES * MAX_SHARE_PRICE),
+            ]], axis=0)
+           
+        else:
+            # Get the stock data points for the last 5 days and scale to between 0-1
+            frame = np.array([
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Open'].values,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'High'].values,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Low'].values,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Close'].values,
+                self.df.loc[self.current_step: self.current_step +
+                            5, 'Volume'].values,
+            ])
+
+            # Append additional data and scale each value to between 0-1
+            obs = np.append(frame, [[
+                self.balance,
+                self.max_net_worth,
+                self.shares_held,
+                self.cost_basis,
+                self.total_shares_sold,
+                self.total_sales_value,
+            ]], axis=0)
+            
+            obs = np.log(obs)
 
         return obs
 

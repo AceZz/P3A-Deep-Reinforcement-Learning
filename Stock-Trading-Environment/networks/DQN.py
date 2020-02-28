@@ -5,23 +5,25 @@ import os
 import datetime
 from gym import wrappers
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Flatten, InputLayer
+from tensorflow.keras.layers import Dense, Flatten, InputLayer, Lambda
+from tensorflow.keras.utils import normalize
 
 class MyModel(tf.keras.Model):
     def __init__(self, input_shape, hidden_units, num_actions): #previously input_shape was num_states
         super(MyModel, self).__init__()
-#         self.input_layer = tf.keras.layers.InputLayer(input_shape=input_shape)
+        self.norm_layer = tf.keras.layers.LayerNormalization()
         self.flatten = tf.keras.layers.Flatten(input_shape=input_shape, data_format=None)
         self.hidden_layers = []
         for i in hidden_units:
             self.hidden_layers.append(tf.keras.layers.Dense(
-                i, activation='tanh', kernel_initializer='RandomNormal'))
+                i, activation='relu', kernel_initializer='RandomNormal'))
         self.output_layer = tf.keras.layers.Dense(
             num_actions, activation='linear', kernel_initializer='RandomNormal')
 
     @tf.function
     def call(self, inputs):
-        z = self.flatten(inputs)
+        z = self.norm_layer(inputs) #normalize according to axis -1
+        z = self.flatten(z)
         for layer in self.hidden_layers:
             z = layer(z)
         output = self.output_layer(z)
@@ -99,4 +101,9 @@ class DQN:
         for v1, v2 in zip(variables1, variables2):
             v1.assign(v2.numpy())
 
+### additional functions
+
+def normalizer(tensor):
+    """normalizes a 6x6 tensor along the 0-axis"""
+    
 
