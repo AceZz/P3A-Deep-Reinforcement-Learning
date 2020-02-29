@@ -99,11 +99,11 @@ class StockCritic(tf.keras.Model):
 
     
         
-    def call(self,inputs):                               #inputs=[state,action]
+    def call(self,inputs):                               #inputs=[[Bacth,state],[Bacth,action]]
         #print(1)
         z = inputs[0]
         z = self.model(z)
-        z = tf.squeeze(z)
+        z = tf.squeeze(z)                                #z = [Batch, 
         a = [z[0], z[1], inputs[1]]
         z = tf.convert_to_tensor(a)
         z = tf.expand_dims(z, 0)
