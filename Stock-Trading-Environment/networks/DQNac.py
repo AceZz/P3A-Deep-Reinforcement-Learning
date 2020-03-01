@@ -203,10 +203,10 @@ class DQN():
             #action_tar = tf.squeeze(action_tar)
             
             #creation of a batch of input state_action
-            states_act = [tf.convert_to_tensor(states_next),action_tar] 
+            states_act_next = [tf.convert_to_tensor(states_next),action_tar] 
             #print(states_act)
             
-            value_next = self.crit_tar(states_act)
+            value_next = self.crit_tar(states_act_next)
             value_next = tf.squeeze(value_next)
             
             
@@ -220,6 +220,7 @@ class DQN():
             
             
             #update Q
+            states_act = [tf.convert_to_tensor(states),tf.convert_to_tensor(actions)]
             with tf.GradientTape() as tape:
                 #calcul de crit(s,a)
                 Qval = tf.squeeze(self.crit(states_act))
@@ -227,15 +228,29 @@ class DQN():
                 print("Qval")
                 print(Qval) 
                 loss = tf.math.reduce_sum(tf.square(Y - Qval))
-            variables = self.crit.trainable_variables
-            gradients = tape.gradient(loss, variables)
+            crit_variables = self.crit.trainable_variables
+            gradients = tape.gradient(loss, crit_variables)
             print("loss")
             print(loss)
             #print(variables)
             #print("gradients")
-            #print(gradients)
-            self.optimizer.apply_gradients(zip(gradients, variables))
-            print("Done optimize")
+            print(gradients)
+            self.optimizer.apply_gradients(zip(gradients, crit_variables))
+            print("Done optimize crit")
+            
+            
+            #update act network
+            with tf.GradientTape() as tape:
+                #calcul de crit(s,a)
+                action = self.act(states_next)
+                Qval = tf.squeeze(self.crit(states_act))
+                Qval = tf.constant(Qval, dtype=tf.float32)                
+                
+            crit_variables = self.crit.trainable_variables
+            act_variables = self.act.trainable_variables
+            
+            critic_grad_act = tape.gradient(Qval,) #gradient of the critic network w.r.t the act network
+            print(critic_grad_act)
 
         
         
