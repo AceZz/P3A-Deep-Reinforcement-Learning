@@ -161,11 +161,11 @@ class DQN():
     
     def convert_action_back(self,action):
         if action[0]==2:
-            return tf.squeeze(tf.constant(0,dtype=tf.float32))
+            return tf.constant(0,dtype=tf.float32)
         elif action[0]==1:
-            return tf.squeeze(tf.constant(-action[1],dtype=tf.float32))
+            return tf.constant(-action[1],dtype=tf.float32)
         else:
-            return tf.squeeze(tf.constant(action[1],dtype=tf.float32))
+            return tf.constant(action[1],dtype=tf.float32)
     
     def train(self,env,T): 
         
@@ -178,17 +178,18 @@ class DQN():
             action = tf.squeeze(action)
             action = self.convert_action(action)
             #print(action)
-            prev_observations = observations
+            prev_observations = tf.convert_to_tensor(observations)
+            prev_observations = tf.squeeze(prev_observations, axis=0)
             observations, reward, done, _ = env.step(action)
             observations = np.expand_dims(observations,axis=0)
-            #observations = np.expand_dims(observations,axis=0)
+
             exp = {'s': prev_observations, 'a': action, 'r': reward, 's2': observations, 'done': done}
             self.add_experience(exp)
             
             
             ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
             states = np.asarray([self.experience['s'][i] for i in ids])
-            actions = np.asarray([self.convert_action_back(self.experience['a'][i]) for i in ids])
+            actions = np.asarray([[self.convert_action_back(self.experience['a'][i])] for i in ids])
             rewards = np.asarray([tf.dtypes.cast(self.experience['r'][i],tf.float32) for i in ids])
             states_next = np.asarray([self.experience['s2'][i] for i in ids])
             dones = np.asarray([self.experience['done'][i] for i in ids])
@@ -220,14 +221,32 @@ class DQN():
             Qval = tf.constant(Qval, dtype=tf.float32)
             
             #update Q
+            states_act = [tf.convert_to_tensor(states),tf.convert_to_tensor(actions)]
+
             with tf.GradientTape() as tape:
                 loss = tf.math.reduce_sum(tf.square(Y - Qval))
             variables = self.crit.trainable_variables
             gradients = tape.gradient(loss, variables)
             print(loss)
-            print(gradients)
-            self.optimizer.apply_gradients(zip(gradients, variables))
-            print("Done optimize")
+            #print(variables)
+            #print("gradients")
+            #print(gradients)
+            self.optimizer.apply_gradients(zip(gradients, crit_variables))
+            print("Done optimize crit")
+            
+            
+            #update act network
+            with tf.GradientTape() as tape:
+                #calcul de crit(s,a)
+                action = self.act(states_next)
+                Qval = tf.squeeze(self.crit(states_act))
+                Qval = tf.constant(Qval, dtype=tf.float32)                
+                
+            crit_variables = self.crit.trainable_variables
+            act_variables = self.act.trainable_variables
+            
+            critic_grad_act = tape.gradient(Qval,) #gradient of the critic network w.r.t the act network
+            print(critic_grad_act)
 
         
         
