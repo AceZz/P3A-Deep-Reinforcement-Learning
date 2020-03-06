@@ -30,8 +30,12 @@ class StockTradingEnv(gym.Env):
             low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
 
         # Prices contains the OHCL values for the last five prices
-        self.observation_space = spaces.Box(
-            low=0, high=1, shape=(6, 6), dtype=np.float16)
+        if not in_log:
+            self.observation_space = spaces.Box(
+                low=0, high=1, shape=(6, 6), dtype=np.float16)
+        else:
+            self.observation_space = spaces.Box(
+                low=0, high=1, shape=(5, 6), dtype=np.float16)
         
         # Prices to be put in log and not normalized
         self.in_log = in_log
@@ -63,8 +67,8 @@ class StockTradingEnv(gym.Env):
             ]], axis=0)
            
         else:
-            # Get the stock data points for the last 5 days and scale to between 0-1
-            frame = np.array([
+            # Get the stock data points for the last 5 days
+            obs = np.array([
                 self.df.loc[self.current_step: self.current_step +
                             5, 'Open'].values,
                 self.df.loc[self.current_step: self.current_step +
@@ -78,16 +82,16 @@ class StockTradingEnv(gym.Env):
             ])
 
             # Append additional data and scale each value to between 0-1
-            obs = np.append(frame, [[
-                self.balance,
-                self.max_net_worth,
-                self.shares_held,
-                self.cost_basis,
-                self.total_shares_sold,
-                self.total_sales_value,
-            ]], axis=0)
+#             obs = np.append(frame, [[
+#                 self.balance,
+#                 self.max_net_worth,
+#                 self.shares_held,
+#                 self.cost_basis,
+#                 self.total_shares_sold,
+#                 self.total_sales_value,
+#             ]], axis=0)
             
-            obs = np.log(obs)
+            #obs = np.log(obs)
 
         return obs
 

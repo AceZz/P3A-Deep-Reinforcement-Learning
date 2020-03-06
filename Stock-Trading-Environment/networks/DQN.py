@@ -8,6 +8,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, InputLayer, Lambda
 from tensorflow.keras.utils import normalize
 
+
+### MLP Model
 class MyModel(tf.keras.Model):
     def __init__(self, input_shape, hidden_units, num_actions): #previously input_shape was num_states
         super(MyModel, self).__init__()
@@ -28,18 +30,30 @@ class MyModel(tf.keras.Model):
             z = layer(z)
         output = self.output_layer(z)
         return output
-    
-# def create_MyModel(input_shape, hidden_units, num_actions):
-#     model = Sequential([
-# #         InputLayer(input_shape=input_shape),
-#         Flatten(),
-#         Dense(256, activation='relu', kernel_initializer='RandomNormal'),
-#         Dense(128, activation='relu', kernel_initializer='RandomNormal'),
-#         Dense(num_actions, activation='softmax', kernel_initializer='RandomNormal')
-#     ])
-#     return model
 
+### CNN Model
+class CNNModel(tf.keras.Model):
+    def __init__(self, input_shape, hidden_units, num_actions): #previously input_shape was num_states
+        super(MyModel, self).__init__()
+        self.norm_layer = tf.keras.layers.LayerNormalization()
+        self.flatten = tf.keras.layers.Flatten(input_shape=input_shape, data_format=None)
+        self.hidden_layers = []
+        for i in hidden_units:
+            self.hidden_layers.append(tf.keras.layers.Dense(
+                i, activation='relu', kernel_initializer='RandomNormal'))
+        self.output_layer = tf.keras.layers.Dense(
+            num_actions, activation='linear', kernel_initializer='RandomNormal')
 
+    @tf.function
+    def call(self, inputs):
+        z = self.norm_layer(inputs) #normalize according to axis -1
+        z = self.flatten(z)
+        for layer in self.hidden_layers:
+            z = layer(z)
+        output = self.output_layer(z)
+        return output
+
+### Wrapping class for the DQN
 class DQN:
     def __init__(self, input_shape, num_actions, hidden_units, gamma, max_experiences, min_experiences, batch_size, lr):
         self.num_actions = num_actions
@@ -69,7 +83,7 @@ class DQN:
         dones = np.asarray([self.experience['done'][i] for i in ids])
         value_next = np.max(TargetNet.predict(states_next), axis=1)
         actual_values = np.where(dones, rewards, rewards+self.gamma*value_next)
-
+        
         with tf.GradientTape() as tape:
             selected_action_values = tf.math.reduce_sum(
                 self.predict(states) * tf.one_hot(actions, self.num_actions), axis=1)
@@ -101,9 +115,6 @@ class DQN:
         for v1, v2 in zip(variables1, variables2):
             v1.assign(v2.numpy())
 
-### additional functions
-
-def normalizer(tensor):
-    """normalizes a 6x6 tensor along the 0-axis"""
+### additional functionsw
     
 
