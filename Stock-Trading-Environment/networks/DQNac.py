@@ -87,26 +87,30 @@ class StockCritic(tf.keras.Model):
 
         
         self.model = MyModel(32, (1,4), (1,1))
-       
+        
+        self.dense_input_action = tf.keras.layers.Dense(
+            2, activation='tanh', kernel_initializer='glorot_uniform')
+        
         self.dense1 = tf.keras.layers.Dense(
-            10, activation='tanh', kernel_initializer='GlorotNormal')
+            10, activation='tanh', kernel_initializer='glorot_uniform')
         self.dense2 = tf.keras.layers.Dense(
-            10, activation='tanh', kernel_initializer='GlorotNormal')        
+            10, activation='tanh', kernel_initializer='glorot_uniform')        
         self.dense3 = tf.keras.layers.Dense(
-            1, activation='tanh', kernel_initializer='GlorotNormal')
+            1, activation='tanh', kernel_initializer='glorot_uniform')
         
         self.optimizer = tf.optimizers.Adam(self.learning_rate)
 
     
         
-    def call(self,inputs):                               #inputs=[state,action]
+    def call(self,inputs):                                    #inputs=[[Bacth,state],[Bacth,action]]
         #print(1)
         z = inputs[0]
         z = self.model(z)
-        z = tf.squeeze(z)
-        a = [z[0], z[1], inputs[1]]
-        z = tf.convert_to_tensor(a)
-        z = tf.expand_dims(z, 0)
+        z = tf.squeeze(z)                                     #z = [Batch, 1,2]
+        inpunts_action = self.dense_input_action(inputs[1])   #inpunts_action = [1,Batch, 2]
+        inpunts_action = tf.squeeze(inpunts_action)           #inpunts_action = [Batch, 2]
+        z = tf.concat([z,inpunts_action], 1)                  #z = [Batch,4]
+        #z = tf.expand_dims(z, 0)
         z = self.dense1(z)
         z = self.dense2(z)
         z = self.dense3(z)            
@@ -140,8 +144,10 @@ class DQN():
         self.crit = StockCritic()
         self.crit_tar = StockCritic()        
         self.crit_tar.set_weights(self.crit.get_weights())
-    
-
+        
+        self.tau = tf.constant(1e-3,dtype=tf.float32)
+        
+        
     def add_experience(self, exp):
         if len(self.experience['s']) >= self.max_experiences:
             for key in self.experience.keys():
@@ -167,25 +173,30 @@ class DQN():
         else:
             return tf.constant(action[1],dtype=tf.float32)
     
-    def train(self,env,T): 
+    def train(self,env,T,table_loss): 
         
         observations = env.reset()
         observations = np.expand_dims(observations,axis=0)
         observations = np.expand_dims(observations,axis=0)
+        observations = tf.convert_to_tensor(observations)   #[1,1,6,6]
         
         for t in range(T):
+
+            #print(observations)
             action = self.act(observations) # observations is actually a single "state" ie past 5 days
-            action = tf.squeeze(action)
+            action = tf.squeeze(action)                   #[1,1]
             action = self.convert_action(action)
             #print(action)
             prev_observations = tf.convert_to_tensor(observations)
-            prev_observations = tf.squeeze(prev_observations, axis=0)
+            prev_observations = tf.squeeze(prev_observations, axis=0)   #[1,6,6]
+            #print(prev_observations )
             observations, reward, done, _ = env.step(action)
-            observations = np.expand_dims(observations,axis=0)
-
+            observations = np.expand_dims(observations,axis=0)          #[1,6,6]
+   
             exp = {'s': prev_observations, 'a': action, 'r': reward, 's2': observations, 'done': done}
             self.add_experience(exp)
-            
+            observations = np.expand_dims(observations,axis=0)
+            observations = tf.convert_to_tensor(observations)           #[1,1,6,6]
             
             ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
             states = np.asarray([self.experience['s'][i] for i in ids])
@@ -197,59 +208,60 @@ class DQN():
             #calcul de crit_target(s_next,action_target(s_next))
 
             action_tar = self.act_tar(states_next)
-            action_tar = tf.squeeze(action_tar)
+            #action_tar = tf.squeeze(action_tar)
             
             #creation of a batch of input state_action
-            states_act = [tf.convert_to_tensor(states_next),action_tar] 
-            print(states_act)
+            states_act_next = [tf.convert_to_tensor(states_next),action_tar] 
+            #print(states_act)
             
-            value_next = self.crit_tar(states_act)
-            print(value_next)
+            value_next = self.crit_tar(states_act_next)
             value_next = tf.squeeze(value_next)
-            print(value_next)
             
             
-            Y = rewards + self.gamma* value_next
-            
-            
-            #calcul de crit(s,a)
-
-            Qval = tf.squeeze(self.crit([states_next,actions]))
-            
-             
+            Y = rewards + self.gamma* value_next               # Y=[Batch]
             Y = tf.constant(Y, dtype=tf.float32)
-            Qval = tf.constant(Qval, dtype=tf.float32)
+            
             
             #update Q
-            states_act = [tf.convert_to_tensor(states),tf.convert_to_tensor(actions)]
+            states = tf.convert_to_tensor(states)
+            actions = tf.convert_to_tensor(actions)
+            states_act = [states,actions]
 
-            with tf.GradientTape() as tape:
-                loss = tf.math.reduce_sum(tf.square(Y - Qval))
-            variables = self.crit.trainable_variables
-            gradients = tape.gradient(loss, variables)
-            print(loss)
-            #print(variables)
-            #print("gradients")
-            #print(gradients)
-            self.optimizer.apply_gradients(zip(gradients, crit_variables))
-            print("Done optimize crit")
-            
-            
-            #update act network
-            with tf.GradientTape() as tape:
+            with tf.GradientTape(persistent=True) as tape:
                 #calcul de crit(s,a)
-                action = self.act(states_next)
-                Qval = tf.squeeze(self.crit(states_act))
-                Qval = tf.constant(Qval, dtype=tf.float32)                
+                tape.watch(actions)
+                tape.watch(states)
+                Qval = tf.squeeze(self.crit([states,actions]))
+                Qval = tf.constant(Qval, dtype=tf.float32)      # Qval=[Batch]
+                loss = tf.math.reduce_sum(tf.square(Y - Qval))
                 
+                act_calc = self.act(states)
+                act_calc = tf.squeeze(act_calc, axis=0)
+                
+            table_loss.append(loss)    
             crit_variables = self.crit.trainable_variables
-            act_variables = self.act.trainable_variables
+            act_variables = self.act.trainable_variables    
             
-            critic_grad_act = tape.gradient(Qval,) #gradient of the critic network w.r.t the act network
-            print(critic_grad_act)
+            crit_gradients = tape.gradient(loss, crit_variables)
 
-        
-        
+            self.optimizer.apply_gradients(zip(crit_gradients, crit_variables))
+            #print("Done optimize crit")
+            
+
+            crit_gradients_wrt_actions = tape.gradient(Qval, actions)
+            act_gradients = tape.gradient(act_calc,act_variables,-crit_gradients_wrt_actions)
+            self.optimizer.apply_gradients(zip(act_gradients, act_variables))
+            #print("Done optimize act")
+            
+            del tape
+            
+            w_act = np.add(np.multiply(self.tau,self.act.get_weights()),np.multiply(tf.constant(1,dtype=tf.float32)-self.tau,self.act_tar.get_weights()))
+            self.act_tar.set_weights(w_act)
+
+            w_crit = np.add(np.multiply(self.tau,self.crit.get_weights()),np.multiply(tf.constant(1,dtype=tf.float32)-self.tau,self.crit_tar.get_weights()))
+            self.crit_tar.set_weights(w_crit)            
+            
+            
         
         
         
