@@ -261,7 +261,7 @@ class DQN():
             w_crit = np.add(np.multiply(self.tau,self.crit.get_weights()),np.multiply(tf.constant(1,dtype=tf.float32)-self.tau,self.crit_tar.get_weights()))
             self.crit_tar.set_weights(w_crit)            
             
-            
+        return self.act
         
         
         
