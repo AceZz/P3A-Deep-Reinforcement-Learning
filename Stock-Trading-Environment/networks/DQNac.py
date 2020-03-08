@@ -64,7 +64,6 @@ class StockActor(tf.keras.Model):
         z = inputs
         z = self.model(z)
         z = tf.squeeze(z)
-        #z = tf.expand_dims(z, 0)
         z = tf.expand_dims(z, 0)
         z = self.dense1(z)
         z = self.dense2(z)
@@ -119,7 +118,7 @@ class StockCritic(tf.keras.Model):
 
 class DQN():
     
-    def __init__(self, gamma, max_experiences, min_experiences, batch_size, lr):
+    def __init__(self, gamma, max_experiences, min_experiences, batch_size, lr_crit,lr_act):
         
         
         #initialize the buffer
@@ -132,7 +131,8 @@ class DQN():
         
         
         self.batch_size = batch_size
-        self.optimizer = tf.optimizers.Adam(lr)
+        self.optimizer_crit = tf.optimizers.Adam(lr_crit)
+        self.optimizer_act = tf.optimizers.Adam(lr_act)
         self.gamma = gamma
         
         
@@ -145,7 +145,7 @@ class DQN():
         self.crit_tar = StockCritic()        
         self.crit_tar.set_weights(self.crit.get_weights())
         
-        self.tau = tf.constant(1e-3,dtype=tf.float32)
+        self.tau = tf.constant(1e-2,dtype=tf.float32)
         
         
     def add_experience(self, exp):
@@ -184,8 +184,8 @@ class DQN():
 
             #print(observations)
             action = self.act(observations) # observations is actually a single "state" ie past 5 days
-            action = tf.squeeze(action)                   #[1,1]
-            action = self.convert_action(action)
+            action = tf.squeeze(action)                   
+            action = self.convert_action(action)                        #[1,1]
             #print(action)
             prev_observations = tf.convert_to_tensor(observations)
             prev_observations = tf.squeeze(prev_observations, axis=0)   #[1,6,6]
@@ -199,10 +199,10 @@ class DQN():
             observations = tf.convert_to_tensor(observations)           #[1,1,6,6]
             
             ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
-            states = np.asarray([self.experience['s'][i] for i in ids])
-            actions = np.asarray([[self.convert_action_back(self.experience['a'][i])] for i in ids])
-            rewards = np.asarray([tf.dtypes.cast(self.experience['r'][i],tf.float32) for i in ids])
-            states_next = np.asarray([self.experience['s2'][i] for i in ids])
+            states = np.asarray([self.experience['s'][i] for i in ids])                                # [Batch,1,6,6]
+            actions = np.asarray([[self.convert_action_back(self.experience['a'][i])] for i in ids])   # [Batch,1]
+            rewards = np.asarray([tf.dtypes.cast(self.experience['r'][i],tf.float32) for i in ids])    # [Batch,1]
+            states_next = np.asarray([self.experience['s2'][i] for i in ids])                          # [Batch,1,6,6]
             dones = np.asarray([self.experience['done'][i] for i in ids])
             
             #calcul de crit_target(s_next,action_target(s_next))
@@ -244,13 +244,13 @@ class DQN():
             
             crit_gradients = tape.gradient(loss, crit_variables)
 
-            self.optimizer.apply_gradients(zip(crit_gradients, crit_variables))
+            self.optimizer_crit.apply_gradients(zip(crit_gradients, crit_variables))
             #print("Done optimize crit")
             
 
             crit_gradients_wrt_actions = tape.gradient(Qval, actions)
             act_gradients = tape.gradient(act_calc,act_variables,-crit_gradients_wrt_actions)
-            self.optimizer.apply_gradients(zip(act_gradients, act_variables))
+            self.optimizer_act.apply_gradients(zip(act_gradients, act_variables))
             #print("Done optimize act")
             
             del tape
