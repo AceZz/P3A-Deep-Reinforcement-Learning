@@ -18,23 +18,26 @@ class MyModel(tf.keras.Model):
         N = 6
         L = 6
         
+        self.norm_layer = tf.keras.layers.LayerNormalization()
+
         self.conv1 = tf.keras.layers.Conv2D(
             filters = nbr_filters, kernel_size = kernel_size, strides = strides, padding = "valid"
             )
-        #,kernel_initializer = tf.keras.initializers.TruncatedNormal([M,L,N,32], stddev=0.15)
+        
         
         self.norm1=tf.keras.layers.BatchNormalization()
         
         self.conv2 = tf.keras.layers.Conv2D(
             filters = 1, kernel_size = (1,2), strides = strides, padding = "valid"
             )      
-         #kernel_initializer = tf.keras.initializers.TruncatedNormal([1,1,32,1], stddev=0.15)
+   
         self.norm2=tf.keras.layers.BatchNormalization()    
         
             
     
     def call(self,inputs):
-        z = self.conv1(inputs)
+        z = self.norm_layer(inputs)
+        z = self.conv1(z)
         z = self.norm1(z)
         z = self.conv2(z)
         z = self.norm2(z)
@@ -52,7 +55,7 @@ class StockActor(tf.keras.Model):
         self.learning_rate = 10e-2
         self.gamma = 0.99
         
-        self.model = MyModel(32, (1,4), (1,1))       
+        self.model = MyModel(32, (1,3), (1,1))       
         self.dense1 = tf.keras.layers.Dense(
                 10, activation='softsign', kernel_initializer='GlorotNormal')
         self.dense2 = tf.keras.layers.Dense(
@@ -85,8 +88,9 @@ class StockCritic(tf.keras.Model):
         #self.action= tf.constant(0.)
 
         
-        self.model = MyModel(32, (1,4), (1,1))
+        self.model = MyModel(32, (1,3), (1,1))
         
+        self.norm_layer = tf.keras.layers.LayerNormalization()
         self.dense_input_action = tf.keras.layers.Dense(
             2, activation='tanh', kernel_initializer='glorot_uniform')
         
@@ -106,7 +110,8 @@ class StockCritic(tf.keras.Model):
         z = inputs[0]
         z = self.model(z)
         z = tf.squeeze(z)                                     #z = [Batch, 1,2]
-        inpunts_action = self.dense_input_action(inputs[1])   #inpunts_action = [1,Batch, 2]
+        inpunts_action = self.norm_layer(inputs[1])
+        inpunts_action = self.dense_input_action(inpunts_action)   #inpunts_action = [1,Batch, 2]
         inpunts_action = tf.squeeze(inpunts_action)           #inpunts_action = [Batch, 2]
         z = tf.concat([z,inpunts_action], 1)                  #z = [Batch,4]
         #z = tf.expand_dims(z, 0)
@@ -173,7 +178,7 @@ class DQN():
         else:
             return tf.constant(action[1],dtype=tf.float32)
     
-    def train(self,env,T,table_loss): 
+    def train(self,env,T,table_loss,table_actions_explored): 
         
         observations = env.reset()
         observations = np.expand_dims(observations,axis=0)
@@ -184,7 +189,8 @@ class DQN():
 
             #print(observations)
             action = self.act(observations) # observations is actually a single "state" ie past 5 days
-            action = tf.squeeze(action)                   
+            action = tf.squeeze(action)+np.random.normal(0,0.05)
+            table_actions_explored.append(action.numpy())
             action = self.convert_action(action)                        #[1,1]
             #print(action)
             prev_observations = tf.convert_to_tensor(observations)
