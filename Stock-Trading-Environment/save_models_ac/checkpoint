@@ -1,2 +1,2 @@
-model_checkpoint_path: "Second"
-all_model_checkpoint_paths: "Second"
+model_checkpoint_path: "agent_7"
+all_model_checkpoint_paths: "agent_7"
