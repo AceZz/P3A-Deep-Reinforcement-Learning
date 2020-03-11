@@ -57,9 +57,9 @@ class StockActor(tf.keras.Model):
         
         self.model = MyModel(32, (1,3), (1,1))       
         self.dense1 = tf.keras.layers.Dense(
-                10, activation='softsign', kernel_initializer='GlorotNormal')
+                10, activation='tanh', kernel_initializer='GlorotNormal')
         self.dense2 = tf.keras.layers.Dense(
-                1, activation='softsign', kernel_initializer='GlorotNormal')        
+                1, activation='tanh', kernel_initializer='GlorotNormal')        
     
     
     def call(self,inputs):

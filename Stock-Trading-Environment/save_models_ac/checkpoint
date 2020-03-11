@@ -1,2 +1,2 @@
-model_checkpoint_path: "agent_7"
-all_model_checkpoint_paths: "agent_7"
+model_checkpoint_path: "agent_best_10000"
+all_model_checkpoint_paths: "agent_best_10000"
