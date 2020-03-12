@@ -57,9 +57,9 @@ class StockActor(tf.keras.Model):
         
         self.model = MyModel(32, (1,3), (1,1))       
         self.dense1 = tf.keras.layers.Dense(
-                10, activation='softsign', kernel_initializer='GlorotNormal')
+                10, activation='tanh', kernel_initializer='GlorotNormal')
         self.dense2 = tf.keras.layers.Dense(
-                1, activation='softsign', kernel_initializer='GlorotNormal')        
+                1, activation='tanh', kernel_initializer='GlorotNormal')        
     
     
     def call(self,inputs):
@@ -178,7 +178,7 @@ class DQN():
         else:
             return tf.constant(action[1],dtype=tf.float32)
     
-    def train(self,env,T,table_loss,table_actions_explored): 
+    def train(self,env,T,table_loss,table_actions_explored,alpha,sigma): 
         
         observations = env.reset()
         observations = np.expand_dims(observations,axis=0)
@@ -189,7 +189,7 @@ class DQN():
 
             #print(observations)
             action = self.act(observations) # observations is actually a single "state" ie past 5 days
-            action = tf.squeeze(action)+np.random.normal(0,0.05)
+            action = tf.squeeze(action)+alpha*np.random.normal(0,sigma)        #np.random.normal(0,0.05)
             table_actions_explored.append(action.numpy())
             action = self.convert_action(action)                        #[1,1]
             #print(action)
