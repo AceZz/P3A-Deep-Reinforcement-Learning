@@ -87,8 +87,10 @@ class StockTradingEnv(gym.Env):
 
     def _take_action(self, action):
         # Set the current price to a random price within the time step
-        current_price = random.uniform(
-            self.df.loc[self.current_step+5, "Open"], self.df.loc[self.current_step+5, "Close"])
+#         current_price = random.uniform(
+#             self.df.loc[self.current_step+5, "Open"], self.df.loc[self.current_step+5, "Close"])
+        
+        current_price = self.df.loc[self.current_step+5, "Close"] # the agent trades at the end of the day
 
         action_type = action[0]
         amount = action[1]
