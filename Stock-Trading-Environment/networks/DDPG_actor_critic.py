@@ -7,17 +7,13 @@ import json
 import datetime as dt
 from gym import wrappers
 
-class MyModel(tf.keras.Model):
+class MyModel(tf.keras.Model): #this part represent the part where the actor and critc network shared the same structure
     
     tf.keras.backend.set_floatx('float32')
     def __init__(self, nbr_filters, kernel_size, strides): #previously input_shape was num_states
         
         super(MyModel, self).__init__()
-        
-        M = 1
-        N = 6
-        L = 6
-        
+
         self.norm_layer = tf.keras.layers.LayerNormalization()
 
         self.conv1 = tf.keras.layers.Conv2D(
@@ -35,11 +31,11 @@ class MyModel(tf.keras.Model):
         
             
     
-    def call(self,inputs):
-        z = self.norm_layer(inputs)
-        z = self.conv1(z)
-        z = self.norm1(z)
-        z = self.conv2(z)
+    def call(self,inputs):                      # inputs = [Batch= 32, rows=1, cols=6, channels=6] 
+        z = self.norm_layer(inputs)             # z = [Batch, rows=1, cols=6, channels=6] 
+        z = self.conv1(z)                        
+        z = self.norm1(z)                        
+        z = self.conv2(z)                       
         z = self.norm2(z)
         return z
     

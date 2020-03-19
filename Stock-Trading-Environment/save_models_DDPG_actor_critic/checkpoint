@@ -1,0 +1,2 @@
+model_checkpoint_path: "agent4_100000"
+all_model_checkpoint_paths: "agent4_100000"
